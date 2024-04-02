@@ -91,16 +91,19 @@ class Tests:
         # Словарь с количеством фильмов для каждого года
         data = movies.dist_by_release()
         assert isinstance(data, dict)
+        assert is_sorted_by_value_desc(data)
         assert list(data.keys())[0] == 2002
 
         # Словарь жанров по частоте
         data = movies.dist_by_genres()
         assert isinstance(data, dict)
+        assert is_sorted_by_value_desc(data)
         assert list(data.keys())[0] == 'Drama'
 
         # Словарь индивидуальных фильмов с самым большим числом жанров
         data = movies.most_genres(10)
         assert isinstance(data, dict)
+        assert is_sorted_by_value_desc(data)
         assert list(data.keys())[0] == 'Rubber'
 
         # Словарь десятилетий с соответствующими тройками самых популярных жанров

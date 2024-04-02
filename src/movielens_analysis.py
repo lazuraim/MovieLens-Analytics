@@ -6,6 +6,10 @@ import time
 import os
 
 
+class Tests:
+    pass
+
+
 class Ratings:
     pass
 
@@ -20,7 +24,7 @@ class Movies:
 
 class Links:
 
-    # захардкодил курс валют, чтобы не использовать запрещенные модули
+    # Захардкодил курс валют, чтобы не использовать запрещенные модули. Нужно для html-парсинга IMDB
     CURRENCY_CODES = {
         '$': 1,
         'FRF': 0.16,
@@ -48,6 +52,14 @@ class Links:
         'SGD': 0.74,
         'THB': 0.027334474,
         'PLN': 0.24988861,
+        '₩': 0.00074,
+        'CN¥': 0.138499,
+        'NT$': 0.03128,
+        '₪': 0.27,
+        'CZK': 0.042,
+        'HUF': 0.0027,
+        'NLG': 0.48695953,
+        'BND': 0.73959387,
     }
 
     def __init__(self, path_to_the_file):
@@ -60,7 +72,6 @@ class Links:
             self.imdbId.append(row[1])
             self.tmdbId.append(row[2])
 
-    # Для минимизации занимаемой памяти использую генератор
     @staticmethod
     def links_file_reader(file_path):
         with open(file_path, 'r') as f:
@@ -68,6 +79,7 @@ class Links:
             for line in lines:
                 yield line.strip().split(',')
 
+    # Переводит любую валюту на IMDB в доллары
     @staticmethod
     def calculate_budget(s):
         s = s.split(' ')[0]
@@ -86,6 +98,8 @@ class Links:
 
         return Links.CURRENCY_CODES[currency] * amount
 
+    # Создает файл file_name в csv-формате с полями Directors,Budget,Gross worldwide,Runtime,Genres,Title для
+    # использования в других методах
     def create_links_csv(self, file_name, lower_bound, upper_bound):
         with open(file_name, 'w') as f:
             f.write('movieId,Directors,Budget,Gross worldwide,Runtime,Genres,Title\n')
@@ -172,7 +186,7 @@ class Links:
 
             imdb_link = f'http://www.imdb.com/title/tt{self.imdbId[index].zfill(7)}/'
 
-            # Добавляю хедер, чтобы симулировать браузер в requests.get()
+            # Добавляю хедер, чтобы симулировать браузер в requests.get(), с дефолтным агентом imdb не парсится
             headers = {
                 'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 '
                               '(KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36'}
@@ -224,9 +238,9 @@ class Links:
         imdb_info.sort(key=lambda x: int(x[0]), reverse=True)
         return imdb_info
 
+    # Люди с наибольшим количеством срежиссированных фильмов
     def top_directors(self, n):
         counter = Counter()
-
         # Находит все файлы и директории по указанному пути
         files = os.listdir('links_data')
 
@@ -245,8 +259,6 @@ class Links:
         return directors
 
     def most_expensive(self, n):
-
-        # Находит все файлы и директории по указанному пути
         files = os.listdir('links_data')
 
         unsorted_budgets = {}
@@ -263,7 +275,6 @@ class Links:
         return budgets
 
     def most_profitable(self, n):
-        # Находит все файлы и директории по указанному пути
         files = os.listdir('links_data')
 
         unsorted_profits = {}
@@ -280,7 +291,6 @@ class Links:
         return profits
 
     def longest(self, n):
-        # Находит все файлы и директории по указанному пути
         files = os.listdir('links_data')
 
         unsorted_runtimes = {}
@@ -296,8 +306,8 @@ class Links:
         runtimes = dict(sorted(unsorted_runtimes.items(), key=lambda item: item[1], reverse=True)[:n])
         return runtimes
 
+    # Самые дорогие фильмы по цене в минуту
     def top_cost_per_minute(self, n):
-        # Находит все файлы и директории по указанному пути
         files = os.listdir('links_data')
 
         unsorted_costs = {}
@@ -318,6 +328,41 @@ class Links:
         costs = dict(sorted(unsorted_costs.items(), key=lambda item: item[1], reverse=True)[:n])
         return costs
 
+    # Самые долгие фильмы по жанрам
+    def longest_by_genre(self, n):
+        counter = Counter()
+        genres_total_time = {}
+
+        files = os.listdir('links_data')
+
+        for file in files:
+            with open(os.path.join("links_data", file), 'r') as f:
+                lines = f.readlines()
+                for line in lines[1:]:  # Skip the header
+                    genres_line = line.split('","')[5]
+                    genres = genres_line.split(',')
+                    counter.update(genres)
+
+                    runtime_raw = line.split('","')[4]
+                    runtime_minutes = int(runtime_raw)
+                    for genre in genres:
+                        if genre not in genres_total_time:
+                            genres_total_time[genre] = runtime_minutes
+                        else:
+                            genres_total_time[genre] += runtime_minutes
+
+        genres_total_count = dict(counter)
+        genres_by_length = {}
+        for genre in genres_total_count:
+            if genres_total_count[genre] != 0:
+                genres_by_length[genre] = genres_total_time[genre] / genres_total_count[genre]
+            else:
+                genres_by_length[genre] = 0
+
+        genres_by_length_sorted = sorted(genres_by_length.items(), key=lambda item: item[1], reverse=True)[:n]
+
+        return genres_by_length_sorted
+
 
 links = Links('ml-latest-small/links.csv')
 # data = links.get_imdb(['1', '2'], ['Director', 'Directors', 'Genres'])
@@ -331,6 +376,7 @@ links = Links('ml-latest-small/links.csv')
 # print(links.most_profitable(10))
 # print(links.longest(10))
 # print(links.top_cost_per_minute(10))
+# print(links.longest_by_genre(10))
 
 # print(links.most_expensive(10))
 
@@ -338,8 +384,8 @@ links = Links('ml-latest-small/links.csv')
 #########################################################
 #########################################################
 
-# step = 100
-# for i2 in range(5000, 9744, step):
+# step = 50
+# for i2 in range(0, 9744, step):
 #
 #     lower_bound = i2
 #     upper_bound = min(i2 + step, 9743)
@@ -347,27 +393,10 @@ links = Links('ml-latest-small/links.csv')
 #     # работает от lower_bound включительно до upper_bound не включительно
 #     links.create_links_csv(file_name, lower_bound, upper_bound)
 #     print(f'{file_name} ready')
-#
-# lower_bound = 0
-# upper_bound = 600
+
+# lower_bound = 9700
+# upper_bound = 9742
 # file_name = 'links_data/links_data_' + str(lower_bound) + '_' + str(upper_bound - 1) + '.csv'
-# links.create_links_csv(file_name, lower_bound, upper_bound)
-# print(f'{file_name} ready')
-#
-# lower_bound = 1000
-# upper_bound = 1100
-# file_name = 'links_data/links_data_' + str(lower_bound) + '_' + str(upper_bound - 1) + '.csv'
-# links.create_links_csv(file_name, lower_bound, upper_bound)
-# print(f'{file_name} ready')
-#
-# lower_bound = 3400
-# upper_bound = 3500
-# file_name = 'links_data/links_data_' + str(lower_bound) + '_' + str(upper_bound - 1) + '.csv'
-# links.create_links_csv(file_name, lower_bound, upper_bound)
-# print(f'{file_name} ready')
-#
-# lower_bound = 4100
-# upper_bound = 4200
-# file_name = 'links_data/links_data_' + str(lower_bound) + '_' + str(upper_bound - 1) + '.csv'
+# print(file_name)
 # links.create_links_csv(file_name, lower_bound, upper_bound)
 # print(f'{file_name} ready')

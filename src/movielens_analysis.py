@@ -4,10 +4,109 @@ import re
 from collections import Counter
 import time
 import os
+import pytest
+
+
+# Вспомогательный метод для тестов
+def is_sorted_by_value_desc(dictionary):
+    values = list(dictionary.values())
+    return all(values[i] >= values[i + 1] for i in range(len(values) - 1))
 
 
 class Tests:
-    pass
+    def test_links(self):
+        links = Links('ml-latest-small/links.csv')
+        assert isinstance(links, Links)
+
+        # Достаю с IMDB информацию по первому фильму из файла
+        data = links.get_imdb(['1'], ['Director'])
+        assert data == [['1', ['John Lasseter']]]
+
+        # Создаю вспомогательный файл
+        file_name = 'test.csv'
+        links.create_links_csv(file_name, 0, 1)
+        assert os.path.exists(file_name)
+        os.remove(file_name)
+
+        # Паршу строку из аргумента, пересчитываю валюту по актуальному курсу к доллару
+        converted_budget = links.calculate_budget('€1234')
+        assert 1333.0 - converted_budget < 1
+
+        # Обращаюсь к генератору за следующей (в этом случае первой) строкой файла
+        toy_story_ids = next(links.links_file_reader('ml-latest-small/links.csv'))
+        assert toy_story_ids == ['1', '0114709', '862']
+
+        # Нахожу 3 самых режиссеров с наибольшим числом фильмов
+        top_directors_data = links.top_directors(3)
+        assert isinstance(top_directors_data, dict)
+        assert is_sorted_by_value_desc(top_directors_data)
+        top_3_directors = list(top_directors_data.keys())
+        assert top_3_directors == ['Woody Allen', 'Alfred Hitchcock', 'Clint Eastwood']
+
+        # 3 самых дорогих фильма
+        most_expensive_data = links.most_expensive(3)
+        assert isinstance(most_expensive_data, dict)
+        assert is_sorted_by_value_desc(most_expensive_data)
+        top_3_expensive = list(most_expensive_data.keys())
+        assert top_3_expensive == ['Мстители: Война бесконечности', 'Звёздные войны: Последние джедаи',
+                                   'Пираты Карибского моря: На краю света']
+
+        # 3 самых прибыльных фильма
+        most_profitable_data = links.most_profitable(3)
+        assert isinstance(most_profitable_data, dict)
+        assert is_sorted_by_value_desc(most_profitable_data)
+        top_3_profitable = list(most_profitable_data.keys())
+        assert top_3_profitable == ['Аватар', 'Титаник', 'Звёздные войны: Пробуждение Силы']
+
+        # Самые долгие фильмы, в т.ч. многосерийные
+        longest_data = links.longest(3)
+        assert isinstance(longest_data, dict)
+        assert is_sorted_by_value_desc(longest_data)
+        top_3_longest = list(longest_data.keys())
+        assert top_3_longest == ['Гражданская война', 'Roots', 'Крестный отец: Трилогия 1901-1980']
+
+        # Самые дорогие в производстве на минуту хронометража
+        top_cost_per_minute_data = links.top_cost_per_minute(3)
+        assert isinstance(top_cost_per_minute_data, dict)
+        assert is_sorted_by_value_desc(top_cost_per_minute_data)
+        top_3_top_cost_per_minute = list(top_cost_per_minute_data.keys())
+        assert top_3_top_cost_per_minute == ['Терминатор 2 - 3D', 'Рапунцель: Запутанная история',
+                                             'Лига справедливости']
+
+        # Жанры с самым долгим средним хронометражем
+        longest_by_genre_data = links.longest_by_genre(3)
+        assert isinstance(longest_by_genre_data, dict)
+        assert is_sorted_by_value_desc(longest_by_genre_data)
+        top_3_longest_by_genre = list(longest_by_genre_data.keys())
+        assert top_3_longest_by_genre == ['History', 'War', 'Biography']
+
+    def test_movies(self):
+        movies = Movies('ml-latest-small/movies.csv')
+        assert isinstance(movies, Movies)
+
+        # Обращаюсь к генератору за следующей (в этом случае первой) строкой файла
+        toy_story_info = next(movies.movies_file_reader('ml-latest-small/movies.csv'))
+        assert toy_story_info == (1, 'Toy Story', 1995, ['Adventure', 'Animation', 'Children', 'Comedy', 'Fantasy'])
+
+        # Словарь с количеством фильмов для каждого года
+        data = movies.dist_by_release()
+        assert isinstance(data, dict)
+        assert list(data.keys())[0] == 2002
+
+        # Словарь жанров по частоте
+        data = movies.dist_by_genres()
+        assert isinstance(data, dict)
+        assert list(data.keys())[0] == 'Drama'
+
+        # Словарь индивидуальных фильмов с самым большим числом жанров
+        data = movies.most_genres(10)
+        assert isinstance(data, dict)
+        assert list(data.keys())[0] == 'Rubber'
+
+        # Словарь десятилетий с соответствующими тройками самых популярных жанров
+        data = movies.trends_over_time()
+        assert isinstance(data, dict)
+        assert list(data.values())[-1] == ['Comedy', 'Drama', 'Action']
 
 
 class Ratings:
@@ -19,18 +118,100 @@ class Tags:
 
 
 class Movies:
-    pass
+    def __init__(self, path_to_the_file):
+        self.movieId = []
+        self.title = []
+        self.release_year = []
+        self.genres = []
+
+        for row in Movies.movies_file_reader(path_to_the_file):
+            self.movieId.append(row[0])
+            self.title.append(row[1])
+            self.release_year.append(row[2])
+            self.genres.append(row[3])
+
+    @staticmethod
+    def movies_file_reader(file_path):
+        with open(file_path, 'r') as f:
+            lines = f.readlines()[1:]
+            for line in lines:
+                if line.isspace():
+                    continue
+                line = line.strip()
+                fields = []
+                field = ''
+                in_quotes = False
+                for ch in line:
+                    if ch == ',' and not in_quotes:
+                        field = field.strip()
+                        fields.append(field)
+                        field = ''
+                    elif ch == '"':
+                        in_quotes = not in_quotes
+                    else:
+                        field += ch
+                field = field.strip()
+                fields.append(field)
+                full_title = fields[1]
+                match = re.search(r'\(\d+\)$', full_title)
+                release_year = None
+                if match:
+                    release_year = int(match.group()[1:-1])
+                if not release_year:
+                    continue
+
+                match = re.search(r'.+\(', full_title)
+                title = match.group()[:-1].strip()
+                movie_id = int(fields[0])
+                genres = fields[2].split('|')
+                yield movie_id, title, release_year, genres
+
+    # Распределение фильмов по году выпуска
+    def dist_by_release(self):
+        counter = Counter(self.release_year)
+        release_years = dict(counter.most_common())
+        return release_years
+
+    # Самые популярные жанры
+    def dist_by_genres(self):
+        counter = Counter()
+        for current_movie_genres in self.genres:
+            counter.update(current_movie_genres)
+        genres = dict(counter.most_common())
+        return genres
+
+    # Топ фильмов по количеству жанров
+    def most_genres(self, n):
+        unsorted_movies = {}
+        for i in range(len(self.movieId)):
+            unsorted_movies[self.title[i]] = len(self.genres[i])
+        movies = {k: v for k, v in sorted(unsorted_movies.items(), key=lambda item: item[1], reverse=True)[:n]}
+        return movies
+
+    def trends_over_time(self):
+        start_decade = min(self.release_year) - min(self.release_year) % 10
+        end_decade = max(self.release_year) - max(self.release_year) % 10
+        decades = {}
+        for i in range(start_decade, end_decade + 1, 10):
+            counter = Counter()
+            for j in range(i, i + 10):
+                indices = [i for i, x in enumerate(self.release_year) if x == j]
+                for index in indices:
+                    counter.update(self.genres[index])
+            top_3 = list(dict(counter.most_common(3)).keys())
+            decades[f'{i}-{i + 9}'] = top_3
+
+        return decades
 
 
 class Links:
-
     # Захардкодил курс валют, чтобы не использовать запрещенные модули. Нужно для html-парсинга IMDB
     CURRENCY_CODES = {
         '$': 1,
         'FRF': 0.16,
         'A$': 0.65,
         'CA$': 0.74,
-        'DEM': 	0.551526,
+        'DEM': 0.551526,
         '€': 1.08,
         '£': 1.26,
         '¥': 0.0066,
@@ -83,7 +264,7 @@ class Links:
     @staticmethod
     def calculate_budget(s):
         s = s.split(' ')[0]
-        match = re.search("\d", s)
+        match = re.search(r"\d", s)
         currency, amount = 'N/A', 0
         if match:
             index = match.start()
@@ -359,44 +540,6 @@ class Links:
             else:
                 genres_by_length[genre] = 0
 
-        genres_by_length_sorted = sorted(genres_by_length.items(), key=lambda item: item[1], reverse=True)[:n]
+        genres_by_length_sorted = dict(sorted(genres_by_length.items(), key=lambda item: item[1], reverse=True)[:n])
 
         return genres_by_length_sorted
-
-
-links = Links('ml-latest-small/links.csv')
-# data = links.get_imdb(['1', '2'], ['Director', 'Directors', 'Genres'])
-# links.create_links_csv('test.csv', 0, 2)
-# print(data)
-# budget = data[0][1][0]
-# print(links.calculate_budget(budget))
-
-# print(links.top_directors(10))
-# print(links.most_expensive(10))
-# print(links.most_profitable(10))
-# print(links.longest(10))
-# print(links.top_cost_per_minute(10))
-# print(links.longest_by_genre(10))
-
-# print(links.most_expensive(10))
-
-
-#########################################################
-#########################################################
-
-# step = 50
-# for i2 in range(0, 9744, step):
-#
-#     lower_bound = i2
-#     upper_bound = min(i2 + step, 9743)
-#     file_name = 'links_data/links_data_' + str(lower_bound) + '_' + str(upper_bound - 1) + '.csv'
-#     # работает от lower_bound включительно до upper_bound не включительно
-#     links.create_links_csv(file_name, lower_bound, upper_bound)
-#     print(f'{file_name} ready')
-
-# lower_bound = 9700
-# upper_bound = 9742
-# file_name = 'links_data/links_data_' + str(lower_bound) + '_' + str(upper_bound - 1) + '.csv'
-# print(file_name)
-# links.create_links_csv(file_name, lower_bound, upper_bound)
-# print(f'{file_name} ready')

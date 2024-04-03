@@ -2,9 +2,21 @@ import requests
 from bs4 import BeautifulSoup
 import re
 from collections import Counter
-import time
 import os
 import pytest
+
+import matplotlib.pyplot as plt
+
+
+# Метод для jupyter notebook
+def visualize_dict(d, x_name, y_name, title):
+    plt.figure(figsize=(20, 10))
+    plt.bar(d.keys(), d.values())
+    plt.xlabel(x_name)
+    plt.ylabel(y_name)
+    plt.title(title)
+    plt.xticks(rotation=45)
+    plt.show()
 
 
 # Вспомогательный метод для тестов

@@ -97,7 +97,7 @@ Remember that the goal of the rush is to strengthen your skills.
 
 Try to use as much as you can from what you have learned from the previous days.
 
-* Use a smaller version of MovieLens dataset, [download](https://drive.google.com/file/d/1CwC887F6FMneXea2yCpDrlrf47Em664u/view?usp=sharing) it, please
+* Use a smaller version of MovieLens dataset, [download](https://drive.google.com/file/d/1CwC887F6FMneXea2yCpDrlrf47Em664u/view?usp=sharing) it, please. Try to use the first 1000 values from the dataset
 * Read the README.txt very carefully. Focus on the file structures
 * In your module, you will need to create 4 classes corresponding to 4 files from the
 data and 1 class for testing

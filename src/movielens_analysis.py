@@ -1,5 +1,6 @@
 import requests
 from bs4 import BeautifulSoup
+from datetime import datetime
 import re
 from collections import Counter
 import os
@@ -24,6 +25,11 @@ def is_sorted_by_value_desc(dictionary):
     values = list(dictionary.values())
     return all(values[i] >= values[i + 1] for i in range(len(values) - 1))
 
+def file_reader(file_path):
+    with open(file_path, 'r') as file:
+        header = file.readline()
+        for line in file:
+            yield line.strip().split(',')
 
 class Tests:
     def test_links(self):
@@ -125,11 +131,62 @@ class Tests:
 
 
 class Ratings:
-    pass
 
+    def __init__(self, file_path):
+        self.userId = []
+        self.movieId = []
+        self.rating = []
+        self.timestamp = []
+
+        for row in file_reader(file_path):
+            self.userId.append(row[0])
+            self.movieId.append(row[1])
+            self.rating.append(row[2])
+            self.timestamp.append(row[3])
+    
+    def top_movies_by_rating(self):
+        top_movies_id = []
+        for idx, movie in enumerate(self.movieId):
+            if self.rating[idx] == 5.0:
+                top_movies_id.append(movie)
+        
+        counter = Counter(top_movies_id)
+        top_movies = dict(counter.most_common(15))
+        # соотнести с названиями из movies.csv
+        return top_movies
+
+    def ratings_distribution(self):
+        counter = Counter(self.rating)
+        ratings = dict(counter.most_common())
+        sorted_dict = dict(sorted(ratings.items()))
+        distribution = list(sorted_dict.values())
+        labels = ['0.5', '1.0', '1.5', '2.0', '2.5', '3.0', '3.5', '4.0', '4.5', '5.0']
+        plt.pie(distribution, labels=labels)
+        plt.show()
 
 class Tags:
-    pass
+
+    def __init__(self, path_to_the_file):
+        self.userId = []
+        self.movieId = []
+        self.tag = []
+        self.timestamp = []
+
+        for row in file_reader(path_to_the_file):
+            self.userId.append(row[0])
+            self.movieId.append(row[1])
+            self.tag.append(row[2])
+            self.timestamp.append(row[3])
+
+    def most_active_user(self):
+        counter = Counter(self.userId)
+        users = dict(counter.most_common(15))
+        return users
+    
+    def most_common_tags(self):
+        counter = Counter(self.tag)
+        tags = dict(counter.most_common(15))
+        return tags
 
 
 class Movies:

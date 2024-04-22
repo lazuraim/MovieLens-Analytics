@@ -147,13 +147,22 @@ class Ratings:
     def top_movies_by_rating(self):
         top_movies_id = []
         for idx, movie in enumerate(self.movieId):
-            if self.rating[idx] == 5.0:
+            if float(self.rating[idx]) == 5.0:
                 top_movies_id.append(movie)
         
         counter = Counter(top_movies_id)
-        top_movies = dict(counter.most_common(15))
-        # соотнести с названиями из movies.csv
-        return top_movies
+        top_movies = dict(counter.most_common(10))
+        
+
+        movie = Movies('ml-latest-small/movies.csv')
+        movie_names = movie.title
+        movie_ids = movie.movieId
+
+        result = {}
+        for movie_id, counter in top_movies.items():
+            name = movie_names[movie_ids.index(int(movie_id))]
+            result[name] = counter
+        return result
 
     def ratings_distribution(self):
         counter = Counter(self.rating)

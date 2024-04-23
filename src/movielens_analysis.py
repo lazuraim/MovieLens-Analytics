@@ -128,7 +128,49 @@ class Tests:
         data = movies.trends_over_time()
         assert isinstance(data, dict)
         assert list(data.values())[-1] == ['Comedy', 'Drama', 'Action']
+    
+    def test_tags(self):
+        tags = Tags('ml-latest-small/tags.csv')
+        assert isinstance(tags, Tags)
 
+        # Первая строка файла
+        tags_line = next(file_reader('ml-latest-small/tags.csv'))
+        assert tags_line == ['2', '60756', 'funny', '1445714994']
+
+        # Наиболее активные пользователи
+        active_users = tags.most_active_user()
+        assert isinstance(active_users, dict)
+        assert list(active_users.keys())[0] == '474'
+        assert is_sorted_by_value_desc(active_users)
+
+        # Часто встречающиеся тэги
+        common_tags = tags.most_common_tags()
+        assert isinstance(common_tags, dict)
+        assert list(common_tags.keys())[0] == 'In Netflix queue'
+        assert is_sorted_by_value_desc(common_tags)
+        
+        # Популярные актеры по тэгам 
+
+        #  Соотношение тэгов и пользователей 
+
+    def test_ratings(self):
+        ratings = Ratings('ml-latest-small/ratings.csv')
+        assert isinstance(ratings, Ratings)
+        
+        # Первая строка файла
+        ratings_line = next(file_reader('ml-latest-small/ratings.csv'))
+        assert ratings_line == ['1', '1', '4.0', '964982703']
+
+        # Фильмы с наибольшим количеством пятерок
+        top_movies_by_5 = ratings.top_movies_by_rating()
+        assert isinstance(top_movies_by_5, dict)
+        assert list(top_movies_by_5.keys())[0] == 'Shawshank Redemption, The'
+        assert is_sorted_by_value_desc(top_movies_by_5)
+
+        # Топ фильмов по средней оценке пользователей
+
+        # Соотношение пользователь-оценка (наилучшие и наихудшие оценки)
+        
 
 class Ratings:
 
@@ -189,7 +231,7 @@ class Tags:
 
     def most_active_user(self):
         counter = Counter(self.userId)
-        users = dict(counter.most_common(15))
+        users = dict(counter.most_common(100))
         return users
     
     def most_common_tags(self):
@@ -197,6 +239,8 @@ class Tags:
         tags = dict(counter.most_common(15))
         return tags
 
+    # соотношение тэгов и пользователей (выделить уникальные тэги и посчитать
+    # сколько пользователей их поставили)
 
 class Movies:
     def __init__(self, path_to_the_file):

@@ -151,7 +151,7 @@ class Tests:
         
         # Популярные актеры по тэгам 
 
-        #  Соотношение тэгов и пользователей 
+        # Соотношение тэгов и пользователей 
 
     def test_ratings(self):
         ratings = Ratings('ml-latest-small/ratings.csv')
@@ -169,8 +169,21 @@ class Tests:
 
         # Топ фильмов по средней оценке пользователей
 
+
+
         # Соотношение пользователь-оценка (наилучшие и наихудшие оценки)
         
+
+def define_movie_name(movies_input: dict):
+    movie = Movies('ml-latest-small/movies.csv')
+    movie_names = movie.title
+    movie_ids = movie.movieId
+
+    result = {}
+    for movie_id, counter in movies_input.items():
+        name = movie_names[movie_ids.index(int(movie_id))]
+        result[name] = counter
+    return result
 
 class Ratings:
 
@@ -194,16 +207,7 @@ class Ratings:
         
         counter = Counter(top_movies_id)
         top_movies = dict(counter.most_common(10))
-        
-
-        movie = Movies('ml-latest-small/movies.csv')
-        movie_names = movie.title
-        movie_ids = movie.movieId
-
-        result = {}
-        for movie_id, counter in top_movies.items():
-            name = movie_names[movie_ids.index(int(movie_id))]
-            result[name] = counter
+        result = define_movie_name(top_movies)
         return result
 
     def ratings_distribution(self):
@@ -214,6 +218,52 @@ class Ratings:
         labels = ['0.5', '1.0', '1.5', '2.0', '2.5', '3.0', '3.5', '4.0', '4.5', '5.0']
         plt.pie(distribution, labels=labels)
         plt.show()
+
+    def top_movies_by_mean_rating(self):
+        movie_rating_sum = {}
+        movie_rating_amount = {}
+        mean_rating = {}
+
+        for id, rating in enumerate(self.rating):
+            if self.movieId[id] in movie_rating_sum:
+                movie_rating_sum[self.movieId[id]] += float(rating)
+                movie_rating_amount[self.movieId[id]] += 1
+            else:
+                movie_rating_sum[self.movieId[id]] = float(rating)
+                movie_rating_amount[self.movieId[id]] = 1
+        
+        for movie, sum in movie_rating_sum.items():
+            if movie_rating_amount[movie] >= 200:
+                mean_rating[movie] = sum / movie_rating_amount[movie]
+            
+        counter = Counter(mean_rating)
+        top_by_mean = dict(counter.most_common(10))
+
+        result = define_movie_name(top_by_mean)
+        return result
+    
+    # def rating_by_user(self):
+    #     user_rating_sum = {}
+    #     user_rating_amount = {}
+    #     mean_rating = {}
+
+    #     for id, rating in enumerate(self.rating):
+    #         if self.userId[id] in user_rating_sum:
+    #             user_rating_sum[self.userId[id]] += float(rating)
+    #             user_rating_amount[self.userId[id]] += 1
+    #         else:
+    #             user_rating_sum[self.userId[id]] = float(rating)
+    #             user_rating_amount[self.userId[id]] = 1
+        
+    #     for user, sum in user_rating_sum.items():
+    #         if user_rating_amount[user] >= 200:
+    #             mean_rating[user] = sum / user_rating_amount[user]
+            
+    #     counter = Counter(mean_rating)
+    #     top_by_mean = dict(counter.most_common())
+
+    #     return top_by_mean
+    
 
 class Tags:
 
@@ -239,8 +289,25 @@ class Tags:
         tags = dict(counter.most_common(15))
         return tags
 
-    # соотношение тэгов и пользователей (выделить уникальные тэги и посчитать
-    # сколько пользователей их поставили)
+    def tag_and_amount_of_users(self, tag: str):
+        users = {}
+        for id, cur_tag in enumerate(self.tag):
+            if str(cur_tag) == tag:
+                if self.userId[id] in users:
+                    users[self.userId[id]] += 1
+                    
+                else:
+                    users[self.userId[id]] = 1
+        
+        counter = Counter(users)
+        users_for_tag = dict(counter.most_common(100))
+        return users_for_tag
+    
+    def best_movies_by_tag(self, input_tag: str):
+        movie_tag = {}
+        for id, tag in enumerate(self.tag):
+            if str(tag) == input_tag:
+                movie_tag[self.movieId[id]] = 0
 
 class Movies:
     def __init__(self, path_to_the_file):

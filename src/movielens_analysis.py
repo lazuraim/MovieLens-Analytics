@@ -5,6 +5,7 @@ import re
 from collections import Counter
 import os
 import pytest
+from datetime import datetime
 
 import matplotlib.pyplot as plt
 
@@ -19,6 +20,9 @@ def visualize_dict(d, x_name, y_name, title):
     plt.xticks(rotation=45)
     plt.show()
 
+def visualize_pie(data:list, labels: list):
+    plt.pie(data, labels=labels)
+    plt.show()
 
 # Вспомогательный метод для тестов
 def is_sorted_by_value_desc(dictionary):
@@ -148,10 +152,24 @@ class Tests:
         assert isinstance(common_tags, dict)
         assert list(common_tags.keys())[0] == 'In Netflix queue'
         assert is_sorted_by_value_desc(common_tags)
-        
-        # Популярные актеры по тэгам 
 
         # Соотношение тэгов и пользователей 
+        tag_users = tags.tag_and_amount_of_users('In Netflix queue')
+        assert isinstance(tag_users, dict)
+        assert list(tag_users.keys())[0] == '474'
+        assert is_sorted_by_value_desc(tag_users)
+
+        # Лучшие фильмы с определенным тэг
+        best_movies = tags.best_movies_by_tag('sci-fi')
+        assert isinstance(best_movies, dict)
+        assert list(best_movies.keys())[0] == 'Star Wars: Episode IV - A New Hope'
+        assert is_sorted_by_value_desc(best_movies)
+
+        # Период наиболее активного выставления тэгов
+        active_time = tags.most_active_time_period()
+        assert isinstance(active_time, dict)
+        assert str(list(active_time.keys())[0]) == '2006-01-14'
+        assert is_sorted_by_value_desc(active_time)
 
     def test_ratings(self):
         ratings = Ratings('ml-latest-small/ratings.csv')
@@ -168,11 +186,23 @@ class Tests:
         assert is_sorted_by_value_desc(top_movies_by_5)
 
         # Топ фильмов по средней оценке пользователей
+        mean_rating = ratings.top_movies_by_mean_rating()
+        assert isinstance(mean_rating, dict)
+        assert list(mean_rating.keys())[0] == 'Shawshank Redemption, The'
+        assert is_sorted_by_value_desc(mean_rating)
 
+        # Период наиболее активного выставления оценок
+        active_time = ratings.most_active_time_period()
+        assert isinstance(active_time, dict)
+        assert str(list(active_time.keys())[0]) == '2017-06-27'
+        assert is_sorted_by_value_desc(active_time)
 
+        # Наиболее популярные фильмы по общему количеству оценок
+        rating_amount = ratings.movies_by_rating_amount()
+        assert isinstance(rating_amount, dict)
+        assert list(rating_amount.keys())[0] == 'Forrest Gump'
+        assert is_sorted_by_value_desc(rating_amount)
 
-        # Соотношение пользователь-оценка (наилучшие и наихудшие оценки)
-        
 
 def define_movie_name(movies_input: dict):
     movie = Movies('ml-latest-small/movies.csv')
@@ -215,9 +245,8 @@ class Ratings:
         ratings = dict(counter.most_common())
         sorted_dict = dict(sorted(ratings.items()))
         distribution = list(sorted_dict.values())
-        labels = ['0.5', '1.0', '1.5', '2.0', '2.5', '3.0', '3.5', '4.0', '4.5', '5.0']
-        plt.pie(distribution, labels=labels)
-        plt.show()
+        
+        return distribution
 
     def top_movies_by_mean_rating(self):
         movie_rating_sum = {}
@@ -242,27 +271,28 @@ class Ratings:
         result = define_movie_name(top_by_mean)
         return result
     
-    # def rating_by_user(self):
-    #     user_rating_sum = {}
-    #     user_rating_amount = {}
-    #     mean_rating = {}
-
-    #     for id, rating in enumerate(self.rating):
-    #         if self.userId[id] in user_rating_sum:
-    #             user_rating_sum[self.userId[id]] += float(rating)
-    #             user_rating_amount[self.userId[id]] += 1
-    #         else:
-    #             user_rating_sum[self.userId[id]] = float(rating)
-    #             user_rating_amount[self.userId[id]] = 1
+    def most_active_time_period(self):
+        times = []
+        for time in self.timestamp:
+            date = datetime.fromtimestamp(int(time)).date()
+            times.append(date)
         
-    #     for user, sum in user_rating_sum.items():
-    #         if user_rating_amount[user] >= 200:
-    #             mean_rating[user] = sum / user_rating_amount[user]
-            
-    #     counter = Counter(mean_rating)
-    #     top_by_mean = dict(counter.most_common())
+        counter = Counter(times)
+        time_periods = dict(counter.most_common())
+        return time_periods
+    
+    def movies_by_rating_amount(self):
+        movie_rating = {}
+        for id, movie in enumerate(self.movieId):
+            if movie in movie_rating:
+                movie_rating[movie] += 1
+            else:
+                movie_rating[movie] = 1
 
-    #     return top_by_mean
+        counter = Counter(movie_rating)
+        movie_rating = dict(counter.most_common(10))
+        result = define_movie_name(movie_rating)
+        return result
     
 
 class Tags:
@@ -307,7 +337,26 @@ class Tags:
         movie_tag = {}
         for id, tag in enumerate(self.tag):
             if str(tag) == input_tag:
-                movie_tag[self.movieId[id]] = 0
+                if self.movieId[id] in movie_tag:
+                    movie_tag[self.movieId[id]] += 1
+                else:
+                    movie_tag[self.movieId[id]] = 1
+        
+        counter = Counter(movie_tag)
+        movie_by_tag = dict(counter.most_common())
+
+        result = define_movie_name(movie_by_tag)
+        return result
+    
+    def most_active_time_period(self):
+        times = []
+        for time in self.timestamp:
+            date = datetime.fromtimestamp(int(time)).date()
+            times.append(date)
+        
+        counter = Counter(times)
+        time_periods = dict(counter.most_common())
+        return time_periods
 
 class Movies:
     def __init__(self, path_to_the_file):
